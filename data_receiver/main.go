@@ -9,29 +9,49 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type DataReceiver struct {
+	msgch    chan types.GPSData
+	conn     *websocket.Conn
+	producer DataProducer
+}
+
 func main() {
-	msg := make(chan types.GPSData)
-	dr := &DataReceiver{
-		msg: msg,
+	var (
+		p   DataProducer
+		err error
+	)
+	p, err = NewKafkaProducer("gps-data")
+	if err != nil {
+		log.Fatal("Failed to set up Kafka producer:", err)
 	}
+	p = NewLogMiddleware(p)
+
+	msgch := make(chan types.GPSData, 128)
+	dr := &DataReceiver{
+		msgch:    msgch,
+		producer: p,
+	}
+
 	http.HandleFunc("/ws", dr.wsHandler)
-	go func() {
-		for range msg {
-			// Do something with the data
-			fmt.Printf("%+v\n", <-msg)
-		}
-	}()
+	go handleIncomingMessages(msgch)
+
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
 
-type DataReceiver struct {
-	msg  chan types.GPSData
-	conn *websocket.Conn
+func handleIncomingMessages(msg chan types.GPSData) {
+	for data := range msg {
+		// Do something with the data
+		fmt.Printf("%+v\n", data)
+	}
 }
 
 var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+}
+
+func (dr *DataReceiver) produceData(data *types.GPSData) error {
+	return dr.producer.ProduceData(*data)
 }
 
 func (dr *DataReceiver) wsHandler(w http.ResponseWriter, r *http.Request) {
@@ -42,6 +62,7 @@ func (dr *DataReceiver) wsHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	dr.conn = conn
 	defer conn.Close()
+
 	for {
 		data := &types.GPSData{}
 		err := conn.ReadJSON(data)
@@ -49,6 +70,11 @@ func (dr *DataReceiver) wsHandler(w http.ResponseWriter, r *http.Request) {
 			log.Println("Failed to read json", err)
 			return
 		}
-		dr.msg <- *data
+		err = dr.produceData(data)
+		if err != nil {
+			log.Println("Failed to produce data", err)
+			return
+		}
+		// dr.msgch <- *data
 	}
 }
