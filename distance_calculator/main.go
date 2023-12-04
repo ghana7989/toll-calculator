@@ -1,7 +1,13 @@
 package main
 
-import "fmt"
+import "github.com/sirupsen/logrus"
 
 func main() {
-	fmt.Println("THis is working fine")
+	calcService := NewCalculatorService()
+	calcService = NewLogMiddleware(calcService)
+	kafkaConsumer, err := NewKafkaConsumer("gps-data", calcService)
+	if err != nil {
+		logrus.Fatalf("Error creating consumer: %v", err)
+	}
+	kafkaConsumer.Start()
 }

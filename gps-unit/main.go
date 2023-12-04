@@ -9,7 +9,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-const wsEndPoint = "ws://127.0.0.1:8080/ws"
+const wsEndPoint = "ws://localhost:8080/ws"
 
 func sendGPSData(conn *websocket.Conn, data types.GPSData) error {
 	return conn.WriteJSON(data)

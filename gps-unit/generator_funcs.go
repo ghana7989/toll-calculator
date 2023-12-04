@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const EmitterInterval = 1 * time.Second
+const EmitterInterval = 5 * time.Second
 
 func GenerateLocation() (float64, float64) {
 	return GenerateCoordinate(), GenerateCoordinate()
