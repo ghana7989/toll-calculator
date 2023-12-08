@@ -10,5 +10,10 @@ calculator:
 	@go build -o bin/distance_calculator ./distance_calculator/*.go
 	@./bin/distance_calculator
 
+aggregator:
+	@go build -o bin/aggregator ./aggregator/*.go
+	@./bin/aggregator
+
 
 .PHONY: gps-unit
+.PHONY: aggregator
